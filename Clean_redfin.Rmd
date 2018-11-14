@@ -1,0 +1,292 @@
+---
+title: "R Notebook"
+output: html_notebook
+author: "Mathew James Athoopallil"
+---
+
+
+```{r}
+# Loading data
+
+load("C://Users//mathe//Downloads//house.RData")
+
+dim(data)
+```
+
+```{r}
+# Identifying columsn with missing values
+
+colnames(data)[colSums(is.na(data)) > 0]
+```
+
+```{r}
+
+colnames(data)
+```
+
+```{r}
+
+unique(data$`PROPERTY TYPE`)
+
+unique(data$STATUS)
+
+unique(data$LOCATION)
+
+```
+
+```{r}
+# high level EDA to see missing values, etc
+
+summary(data)
+```
+
+```{r}
+
+# Checking relationship between variables
+
+library(corrplot)
+
+corrplot(round(cor(data[-7228,c('PRICE','LATITUDE','LONGITUDE')]),2), method = "number")
+
+corrplot(round(cor(data[-1*c(which(is.na(data$`YEAR BUILT`)), which(is.na(data$PRICE))),c('PRICE','YEAR BUILT')]),2), method = "number")
+
+
+data[which(data$BATHS==112),]
+```
+which variables to keep
+-drop - SOLD Date, LOT SIZE, HOA/MONTH, NEXT OPEN HOUSE START TIME, NEXT OPEN HOUSE END TIME, SOURCE, MLS#, FAVORITE, INTERESTED, SALE TYPE, SOLD DATE, ADDRESS, CITY, STATE,
+
+Types of prop - "Condo/Co-op", "Single Family Residential", "Townhouse"
+
+
+
+how to impute missing values
+: sq feet from bed and bath
+: year built (Decide later)
+
+
+
+how to deal with outliers
+
+: visualize outliers and run test 
+
+show relationship with crime data using zip code relationship
+: Split into mild and serious crimes.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+# creating new data with selected property types
+
+df <- data %>% filter((`PROPERTY TYPE` == 'Condo/Co-op') | (`PROPERTY TYPE` == 'Single Family Residential') | (`PROPERTY TYPE` == 'Townhouse'))
+head(df)
+```
+
+
+
+```{r}
+dim(df) #8011   27
+# Choosing columns 
+
+df <- df[,c("PRICE","PROPERTY TYPE","ZIP","BEDS","BATHS","SQUARE FEET","LOCATION","YEAR BUILT","URL (SEE http://www.redfin.com/buy-a-home/comparative-market-analysis FOR INFO ON PRICING)","LATITUDE","LONGITUDE")]
+
+#renaming columns
+colnames(df) <- c("PRICE","PROPERTY_TYPE","ZIP","BEDS","BATHS","SQUARE_FEET", "LOCATION","YEAR_BUILT","URL","LATITUDE","LONGITUDE")
+
+colnames(df)
+head(df)
+```
+
+
+
+
+```{r}
+# EDA on filetered data
+summary(df)
+```
+
+```{r}
+#Removing duplicates
+
+df <- df[!duplicated(df),]
+
+sum(duplicated(df))
+
+dim(df)
+```
+
+```{r}
+# Removing single missing bath
+df <- df %>% filter(!is.na(BATHS))
+dim(df)
+# removing outlier of beds
+
+df <- df[-1*c(which(df$SQUARE_FEET==1)),]
+
+#Checking the datatypes of the columns
+lapply(df,class)
+#unique(df$LOCATION)
+unique(df$BEDS)
+```
+
+```{r}
+hist(df$BATHS)
+
+hist(df$BEDS)
+colnames(df)[colSums(df != 0) > 0]
+colnames(df)[colSums(df != 0) > 0]
+colnames(df)
+
+temp <- df %>% filter(!is.na(SQUARE_FEET)) # present value for aggregation and mean estimation
+
+temp1 <- df %>% filter(is.na(SQUARE_FEET)) # missing values to be replaced with imputed values
+
+corrplot(round(cor(temp[,c("BEDS","BATHS","SQUARE_FEET")]),2), method = "number")
+
+unique(df$BEDS)
+unique(temp$BEDS)
+unique(temp1$BEDS)
+unique(df$BATHS)
+unique(temp$BATHS)
+unique(temp1$BATHS)
+
+summary(df)
+
+```
+
+```{r}
+# Imputing the square feet value from bed and bath values
+
+res1 <- as.data.frame(aggregate(SQUARE_FEET ~ BATHS + BEDS,temp, mean)) # taking mean of values which are present
+
+res1["SQUARE_FEET"] <- sapply(res1$SQUARE_FEET, as.integer)
+res1
+
+
+#head(trial)
+head(res1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# This combination does not exist in the data where values are present, however it is present in the values which are missing
+
+res1 %>% filter((BEDS == 8) & (BATHS == 3))
+
+
+```
+
+```{r}
+# filling the missing values for Square feet
+
+library('data.table')
+
+x <- setDT(df[which(is.na(df$SQUARE_FEET)),c("BEDS", "BATHS", "SQUARE_FEET")])
+
+
+x[i = res1, `:=` ( SQUARE_FEET = i.SQUARE_FEET), on = .(BEDS,BATHS)]
+
+
+
+df[which(is.na(df$SQUARE_FEET)),c("SQUARE_FEET")] <- x$SQUARE_FEET
+df <- df[-1*c(which(is.na(df$SQUARE_FEET))),]
+
+df[which(is.na(df$SQUARE_FEET)),]
+
+summary(df)
+```
+```{r}
+load("D:/Masters/FALL 2018/Applied Statistics/Project/HousingPrice/data/extra_data.RData")
+
+sort(unique(extra_data$community))
+```
+
+```{r}
+sort(unique((df %>% filter(LOCATION %in% extra_data$community))$LOCATION))
+
+# df has "Loop" whereas extra_data has "The Loop"
+```
+
+```{r}
+
+# Replacing
+
+df[which(df$LOCATION == "Loop"), "LOCATION"] <- "The Loop"
+```
+
+```{r}
+#Filtering relevant communitites 
+
+df <- df %>% filter(LOCATION %in% extra_data$community)
+
+summary(df)
+
+length(unique(df$LOCATION))
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(data = df, aes(x=LOCATION, y=YEAR_BUILT)) + geom_boxplot() + coord_flip()
+
+#sapply(df,class)
+
+```
+
+```{r}
+
+miss_YB_Comm <- df %>% filter(is.na(YEAR_BUILT)) %>% count(LOCATION) %>% arrange(n)
+
+unique((df %>% filter(is.na(YEAR_BUILT)) %>% count(LOCATION) %>% arrange(desc(n)))$LOCATION)
+```
+
+```{r}
+par(mar=c(11, 4.1, 4.1, 2.1))
+barplot(miss_YB_Comm$n,names.arg = miss_YB_Comm$LOCATION,horiz = F, las = 2)
+```
+
+```{r}
+compl_YB_Comm <- df %>% count(LOCATION) %>% arrange(n)
+par(mar=c(11, 4.1, 4.1, 2.1))
+barplot(compl_YB_Comm$n,names.arg = compl_YB_Comm$LOCATION,horiz = F, las = 2)
+
+```
+
+```{r}
+#trial <- df
+
+# using mice to impute missing year built
+library("mice")
+
+
+data_imp<-mice(trial, m=1, method='cart', printFlag=FALSE)
+
+data_imputed<-complete(data_imp, action = 1, include = FALSE)
+
+xyplot(data_imp, YEAR_BUILT ~ BATHS,main="Check Imputation Result")
+
+```
+
+```{r}
+
+save(data_imputed,file = "cleanedRedfin.RData")
+
+
+```
+
+
+
+
+
+
