@@ -1,0 +1,17 @@
+Spreadsheet: 2010 Census Data Summarized
+https://datahub.cmap.illinois.gov/dataset/2010-census-data-summarized-to-chicago-community-areas/resource/b30b47bf-bb0d-46b6-853b-47270fb7f626
+
+Census Data - Selected socioeconomic indicators in Chicago, 2008 – 2012
+https://data.cityofchicago.org/Health-Human-Services/Census-Data-Selected-socioeconomic-indicators-in-C/kn9c-c2s2
+
+Public Health Statistics- Life Expectancy By Community Area
+https://data.cityofchicago.org/Health-Human-Services/Public-Health-Statistics-Life-Expectancy-By-Commun/qjr3-bm53
+
+Public Health Statistics- Selected public health indicators by Chicago community area
+https://data.cityofchicago.org/Health-Human-Services/Public-Health-Statistics-Selected-public-health-in/iqnk-2tcu
+
+CTA - System Information - List of 'L' Stops
+https://data.cityofchicago.org/Transportation/CTA-System-Information-List-of-L-Stops/8pix-ypme
+
+???CTA - System Information - List of 'L' Stops
+https://data.cityofchicago.org/Transportation/CTA-System-Information-List-of-L-Stops/8pix-ypme
