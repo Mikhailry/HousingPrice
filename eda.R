@@ -12,7 +12,33 @@ library('ggmap')  #getting coordinates for place
 
 
 #load data
-load('data_final.Rdata')
+load('data_final1122.Rdata')
+
+#Create categories for the extremes
+data_final$NeighRich[data_final$community_no %in% c(7,8,32,5,24,6,22,4,33,28,12)] = 2
+data_final$NeighRich[!data_final$community_no %in% c(54,67,68,51,46,30,7,8,32,5,24,6,22,4,33,28,12)] = 1
+data_final$NeighRich[data_final$community_no %in% c(54,67,68,51,46,30)] = 0
+
+#drop some columns
+data_final <- data_final %>% dplyr::select(-one_of('ZIP','LOCATION', 'URL'))
+
+#Fix naming conflicts
+colnames(data_final)[colnames(data_final)=="perc_16+_unempl"] = "perc_16plus_unempl"
+colnames(data_final)[colnames(data_final)=="perc_25+_no_school_diploma"] = "perc_25plus_no_school_diploma"
+
+#Calculate building age instead of year built variable
+data_final$age <- 2018 - data_final$YEAR_BUILT
+#for buildings being built - set age to zero
+data_final$age[data_final$age<0] <- 0
+data_final$YEAR_BUILT <- NULL
+
+
+#convert property type, beds and baths, and NeighRich to factor
+data_final$PROPERTY_TYPE <- as.factor(data_final$PROPERTY_TYPE)
+data_final$BEDS <- as.factor(data_final$BEDS)
+data_final$BATHS <- as.factor(data_final$BATHS)
+data_final$NeighRich <- as.factor(data_final$NeighRich)
+
 
 #let's check summary statistics first
 summary(data_final)
@@ -20,19 +46,18 @@ summary(data_final)
 colnames(data_final)
 
 #let's identify numeric variables
-numericVars <- c('PRICE', 'BEDS', 'BATHS', 'SQUARE_FEET', 'YEAR_BUILT', 
-                 'LATITUDE', 'LONGITUDE', 'min_dist_cta', 'num_cta_1mile', 
+numericVars <- c('PRICE', 'SQUARE_FEET','LATITUDE', 'LONGITUDE', 'min_dist_cta', 'num_cta_1mile', 
                  'crime_per_1000', 'life_exp_2010', 'unemployment', 'perc_housing_crowded', 
-                 'perc_household_below_poverty', 'perc_16+_unempl', 'perc_25+_no_school_diploma', 
+                 'perc_household_below_poverty', 'perc_16plus_unempl', 'perc_25plus_no_school_diploma', 
                  'perc_under18_over64', 'income_per_capite', 'hardship_index',
-                 'percent_level1_school', 'percent_level2_school')
+                 'percent_level1_school', 'percent_level2_school', 'age')
 
 #let's identify categorical variables
-catVars <- c('PROPERTY_TYPE', 'LOCATION')
+catVars <- c('PROPERTY_TYPE', 'LOCATION', 'BEDS', 'BATHS', 'NeighRich')
 
 #data_final[,numericVars]
 #data_final[,catVars]
-
+#save(data_final, file = "data/data_final_ols.RData")
 #======================================
 #histograms of all numeric vars
 #======================================
@@ -48,7 +73,7 @@ data_final[,numericVars] %>%
 #and create correlation plot
 #======================================
 corr <- round(cor(data_final[,numericVars]), 2)
-ggcorrplot(corr, hc.order = TRUE, outline.col = "white", method = "circle")
+ggcorrplot(corr, hc.order = TRUE, type = "lower", lab = TRUE)
 
 
 #======================================
@@ -62,11 +87,11 @@ ggplot(data_final, aes(x=PRICE)) + geom_histogram(fill="steelblue", alpha = .8) 
 #======================================
 #Bar plots of all categorical variables
 #======================================
-ggplot(data_final[,catVars], aes(PROPERTY_TYPE)) + geom_bar(fill="steelblue", alpha = .8) + ggtitle('Distribution of offers by property type')
+ggplot(data_final, aes(x=PROPERTY_TYPE)) + geom_bar(fill="steelblue", alpha = .8) + ggtitle('Distribution of offers by property type')
 
 ## set the levels in order
-data_final <- within(data_final, LOCATION <- factor(LOCATION, levels=names(sort(table(LOCATION), decreasing=TRUE))))
-ggplot(data_final, aes(LOCATION)) + geom_bar(fill="steelblue", alpha = .8) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle('Distribution of offers by community')
+#data_final <- within(data_final, LOCATION <- factor(LOCATION, levels=names(sort(table(LOCATION), decreasing=TRUE))))
+#ggplot(data_final, aes(LOCATION)) + geom_bar(fill="steelblue", alpha = .8) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ggtitle('Distribution of offers by community')
 
 #======================================
 #Spatial analysis: data preparation
@@ -81,7 +106,7 @@ geocode("Chicago", output = "more", source = "dsk")
 #let's aggregate our data per community and join it with data in shape file
 dataViz <- data_final %>% group_by(community_no) %>% 
   summarise(meanPrice = mean(PRICE), sdPrice=sd(PRICE), coefVar=(sdPrice/meanPrice), medianPrice=median(PRICE), dollarsPerSqf=(medianPrice/median(SQUARE_FEET)),
-            minPrice=min(PRICE), maxPrice=max(PRICE), medianYearB=median(YEAR_BUILT), meanYearB=mean(YEAR_BUILT),
+            minPrice=min(PRICE), maxPrice=max(PRICE), medianAge=median(age), meanAge=mean(age),
             crimePer1000=mean(crime_per_1000), percLevel1Schools=mean(percent_level1_school), percLevel2Schools=mean(percent_level2_school))
 
 #convert area_number in chicom@data to numeric
@@ -111,8 +136,8 @@ npal_coefVar <- colorNumeric("Greens", domain = chicom@data$coefVar)
 npal_minPrice <- colorNumeric("Blues", domain = chicom@data$minPrice)
 npal_maxPrice <- colorNumeric("Blues", domain = chicom@data$maxPrice)
 npal_dollarsPerSqf <- colorNumeric("Blues", domain = chicom@data$dollarsPerSqf)
-npal_medianYearB <- colorNumeric("Blues", domain = chicom@data$medianYearB)
-npal_meanYearB <- colorNumeric("Blues", domain = chicom@data$meanYearB)
+npal_medianAge <- colorNumeric("Blues", domain = chicom@data$medianAge)
+npal_meanAge <- colorNumeric("Blues", domain = chicom@data$meanAge)
 npal_percLevel1Sch <- colorNumeric("Greens", domain = chicom@data$percLevel1Schools)
 npal_percLevel2Sch <- colorNumeric("Greens", domain = chicom@data$percLevel2Schools)
 
@@ -151,14 +176,14 @@ finalmap <- chicom %>% leaflet() %>%
   addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_dollarsPerSqf(dollarsPerSqf), 
               label = ~paste(community, ' - ', "Dollars per Sqf: ", usd(dollarsPerSqf)),
               highlight = highlightOptions(weight = 5, color = "white", bringToFront = TRUE), group = 'dollars per sqf') %>%
-  #add layer with median year built
-  addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_medianYearB(medianYearB), 
-              label = ~paste(community, ' - ', "Median year built: ", medianYearB),
-              highlight = highlightOptions(weight = 5, color = "white", bringToFront = TRUE), group = 'median year built') %>%
+  #add layer with median house age
+  addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_medianAge(medianAge), 
+              label = ~paste(community, ' - ', "Median house age: ", medianAge),
+              highlight = highlightOptions(weight = 5, color = "white", bringToFront = TRUE), group = 'median house age') %>%
   #add layer with mean year built
-  addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_meanYearB(meanYearB), 
-              label = ~paste(community, ' - ', "Mean year built: ", meanYearB),
-              highlight = highlightOptions(weight = 5, color = "white", bringToFront = TRUE), group = 'mean year built') %>%
+  addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_meanAge(meanAge), 
+              label = ~paste(community, ' - ', "Mean house age: ", meanAge),
+              highlight = highlightOptions(weight = 5, color = "white", bringToFront = TRUE), group = 'mean house age') %>%
   #add layer with percent level 1 schools
   addPolygons(weight = 1, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.8, color = ~npal_percLevel1Sch(percLevel1Schools), 
               label = ~paste(community, ' - ', "Percent level 1 schools: ", percLevel1Schools),
@@ -176,8 +201,8 @@ finalmap <- chicom %>% leaflet() %>%
   addLegend(pal = npal_minPrice, values = ~minPrice, opacity = 0.75, title = "House min price", position = "bottomleft", group = 'house min price') %>%
   addLegend(pal = npal_maxPrice, values = ~maxPrice, opacity = 0.75, title = "House max price", position = "bottomleft", group = 'house max price') %>%
   addLegend(pal = npal_dollarsPerSqf, values = ~dollarsPerSqf, opacity = 0.75, title = "Dollars per Sqf", position = "bottomleft", group = 'dollars per sqf') %>%
-  addLegend(pal = npal_medianYearB, values = ~medianYearB, opacity = 0.75, title = "Median year built", position = "bottomleft", group = 'median year built') %>%
-  addLegend(pal = npal_meanYearB, values = ~meanYearB, opacity = 0.75, title = "Mean year built", position = "bottomleft", group = 'mean year built') %>%
+  addLegend(pal = npal_medianAge, values = ~medianAge, opacity = 0.75, title = "Median house age", position = "bottomleft", group = 'median house age') %>%
+  addLegend(pal = npal_meanAge, values = ~meanAge, opacity = 0.75, title = "Mean house age", position = "bottomleft", group = 'mean house age') %>%
   addLegend(pal = npal_percLevel1Sch, values = ~percLevel1Schools, opacity = 0.75, title = "Percent level 1 schools", position = "bottomleft", group = 'level1 schools') %>%
   addLegend(pal = npal_percLevel2Sch, values = ~percLevel2Schools, opacity = 0.75, title = "Percent level 2 schools", position = "bottomleft", group = 'level2 schools') %>%
   
@@ -188,10 +213,10 @@ finalmap <- chicom %>% leaflet() %>%
   setView(lng = -87.65005, lat = 41.875919, zoom = 10) %>%
   # add layer controls for base and overlay groups
   addLayersControl(baseGroups = c("OSM", "Carto", "Esri"), overlayGroups = c('crime rate','house mean price', 'house median price','price coef. of Var',
-                                                                             'house min price', 'house max price', 'dollars per sqf', 'median year built', 
-                                                                             'mean year built', 'level1 schools', 'level2 schools')) %>%
+                                                                             'house min price', 'house max price', 'dollars per sqf', 'median house age', 
+                                                                             'mean house age', 'level1 schools', 'level2 schools')) %>%
   hideGroup(c('crime rate','house median price', 'price coef. of Var', 'house min price', 'house max price', 'dollars per sqf', 
-              'median year built','mean year built', 'level1 schools', 'level2 schools'))
+              'median house age','mean house age', 'level1 schools', 'level2 schools'))
   #set bounds for maps
   #setMaxBounds(lng1 = -87.47623 + .05, lat1 = 42.07454 + .05, 
   #             lng2 = -87.9828 + .05, lat2 = 41.60723 + .05)
@@ -205,8 +230,8 @@ finalmap
 #======================================
 
 #let's convert 'beds' and 'baths' variables to factor
-data_final$BEDS <- factor(data_final$BEDS)
-data_final$BATHS <- factor(data_final$BATHS)
+#data_final$BEDS <- factor(data_final$BEDS)
+#data_final$BATHS <- factor(data_final$BATHS)
 
 #side-by-side boxplots: price distribution based on number of beds
 ggplot(data=data_final, aes(x=BEDS, y=PRICE, fill=BEDS)) + geom_boxplot() + 
@@ -222,14 +247,16 @@ ggplot(data=data_final, aes(x=BATHS, y=PRICE, fill=BATHS)) + geom_boxplot() +
 #House prices vs square feet
 #======================================
 #House price vs square feet
-ggplot(data=data_final, aes(x=SQUARE_FEET, y=PRICE)) + geom_point() + geom_smooth() +
+ggplot(data=data_final, aes(x=SQUARE_FEET, y=PRICE)) + geom_point() + 
   labs(title = 'House prices vs square feet') + 
   scale_y_continuous(labels = scales::comma) 
 
 #======================================
 #Proximity to CTA / CTA stations with house prices
 #======================================
+data_final$community_no <- as.factor(data_final$community_no)
+
 #House price vs proximity to CTA
-ggplot(data=data_final, aes(x=min_dist_cta, y=PRICE)) + geom_point() + geom_smooth() +
+ggplot(data=data_final, aes(x=min_dist_cta, y=PRICE)) + geom_point() + 
   labs(title = 'House prices vs minimum distance to CTA') + 
   scale_y_continuous(labels = scales::comma) 

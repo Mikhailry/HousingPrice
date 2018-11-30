@@ -157,6 +157,17 @@ for (i in 1:nrow(data)){
 #adding extra_data (12 variables) to each observation in data
 compiled_data <- inner_join(data, extra_data, by=c('LOCATION' = 'community'))
 
+
+#adding education data
+education <- read_csv('Chicago_edu_data/Chicago_school_area_ratings.csv')
+
+#dropping unnesessary columns
+education <- education %>% select(`Community Area Name`, 'Percent_level1', 'Percent_level2')
+
+#joining education data to the main dataset
+compiled_data <- 
+
+
 summary(compiled_data)
 
 #save compiled_data
