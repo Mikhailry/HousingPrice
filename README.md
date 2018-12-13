@@ -13,6 +13,6 @@ XGBoost model predicts the house price most accurately. We also observe some
 important predictor variables, including square footage of the house, the number of
 baths in the house and the socio-economic condition of the communities.
 
-[Full report can be found here](https://github.com/mathewjamesa/HousingPrice/blob/master/HousingPriceProject.pdf)
+[Full report can be found here](https://github.com/mathewjamesa/HousingPrice/blob/master/report/HousingPriceProject.pdf)
 
 [The interactive map of Chicago communities with the variety of summary metrics about the houses for sale overlayed available here]()

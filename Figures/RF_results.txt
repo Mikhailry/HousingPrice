@@ -1,8 +1,0 @@
-Call:
- randomForest(formula = PRICE ~ ., data = trainData, ntree = 500,      importance = TRUE) 
-               Type of random forest: regression
-                     Number of trees: 500
-No. of variables tried at each split: 8
-
-          Mean of squared residuals: 0.05893583
-                    % Var explained: 92.38
