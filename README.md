@@ -15,4 +15,4 @@ baths in the house and the socio-economic condition of the communities.
 
 [Full report can be found here](https://github.com/Mikhailry/HousingPrice/blob/master/report/HousingPriceProject.pdf)
 
-[The interactive map of Chicago communities with the variety of summary metrics about the houses for sale overlayed available here]()
+[The interactive map of Chicago communities with the variety of summary metrics about the houses for sale overlayed available here](https://chicagorealest.herokuapp.com)
